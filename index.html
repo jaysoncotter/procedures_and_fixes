@@ -109,6 +109,9 @@
             background: #f0f0f0;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
+        .fix-result.waypoint {
+            border-left-color: #2196F3;
+        }
         .fix-name {
             font-size: 1.1em;
             font-weight: bold;
@@ -142,6 +145,14 @@
         }
         .badge-fuzzy {
             background: #9C27B0;
+            color: white;
+        }
+        .badge-fix {
+            background: #4CAF50;
+            color: white;
+        }
+        .badge-waypoint {
+            background: #2196F3;
             color: white;
         }
         .procedure-info {
@@ -208,17 +219,14 @@
                 str = str.toUpperCase().trim();
                 if (str.length === 0) return ["", ""];
                 
-                // Primary and secondary keys
                 let primary = "";
                 let secondary = "";
                 let pos = 0;
                 
-                // Helper functions
                 const isVowel = (c) => 'AEIOU'.indexOf(c) !== -1;
                 const charAt = (i) => i < str.length ? str[i] : '';
                 const match = (i, sub) => str.substring(i, i + sub.length) === sub;
                 
-                // Handle first character special cases
                 if (match(0, 'PN') || match(0, 'AE') || match(0, 'KN') || match(0, 'GN') || match(0, 'WR')) {
                     pos++;
                 }
@@ -228,11 +236,9 @@
                     pos++;
                 }
                 
-                // Main processing loop
                 while (pos < str.length) {
                     const ch = charAt(pos);
                     
-                    // Skip vowels except at start (handled above)
                     if (isVowel(ch) && pos > 0) {
                         pos++;
                         continue;
@@ -240,245 +246,147 @@
                     
                     switch (ch) {
                         case 'B':
-                            primary += 'P';
-                            secondary += 'P';
+                            primary += 'P'; secondary += 'P';
                             if (match(pos + 1, 'B')) pos++;
                             break;
-                            
                         case 'C':
                             if (match(pos + 1, 'K') || match(pos + 1, 'S')) {
-                                if (match(pos + 1, 'K')) {
-                                    primary += 'K';
-                                    secondary += 'K';
-                                } else {
-                                    primary += 'S';
-                                    secondary += 'S';
-                                }
+                                if (match(pos + 1, 'K')) { primary += 'K'; secondary += 'K'; }
+                                else { primary += 'S'; secondary += 'S'; }
                             } else if (match(pos + 1, 'I') && match(pos + 2, 'A')) {
-                                primary += 'X';
-                                secondary += 'X';
+                                primary += 'X'; secondary += 'X';
                             } else if (match(pos + 1, 'H')) {
-                                if (pos === 0 && !isVowel(charAt(2))) {
-                                    primary += 'K';
-                                    secondary += 'K';
-                                } else {
-                                    primary += 'X';
-                                    secondary += 'X';
-                                }
+                                if (pos === 0 && !isVowel(charAt(2))) { primary += 'K'; secondary += 'K'; }
+                                else { primary += 'X'; secondary += 'X'; }
                                 pos++;
-                            } else {
-                                primary += 'K';
-                                secondary += 'K';
-                            }
+                            } else { primary += 'K'; secondary += 'K'; }
                             break;
-                            
                         case 'D':
                             if (match(pos + 1, 'G') && (match(pos + 2, 'E') || match(pos + 2, 'Y') || match(pos + 2, 'I'))) {
-                                primary += 'J';
-                                secondary += 'J';
-                                pos += 2;
+                                primary += 'J'; secondary += 'J'; pos += 2;
                             } else {
-                                primary += 'T';
-                                secondary += 'T';
+                                primary += 'T'; secondary += 'T';
                                 if (match(pos + 1, 'D') || match(pos + 1, 'T')) pos++;
                             }
                             break;
-                            
                         case 'F':
-                            primary += 'F';
-                            secondary += 'F';
+                            primary += 'F'; secondary += 'F';
                             if (match(pos + 1, 'F')) pos++;
                             break;
-                            
                         case 'G':
                             if (match(pos + 1, 'H')) {
-                                if (!isVowel(charAt(pos + 2))) {
-                                    primary += 'K';
-                                    secondary += 'K';
-                                    pos++;
-                                }
+                                if (!isVowel(charAt(pos + 2))) { primary += 'K'; secondary += 'K'; pos++; }
                             } else if (match(pos + 1, 'N')) {
-                                if (pos === 0) {
-                                    primary += 'N';
-                                    secondary += 'KN';
-                                } else {
-                                    primary += 'N';
-                                    secondary += 'N';
-                                }
+                                if (pos === 0) { primary += 'N'; secondary += 'KN'; }
+                                else { primary += 'N'; secondary += 'N'; }
                             } else if (match(pos + 1, 'I') && (match(pos + 2, 'E') || match(pos + 2, 'L'))) {
-                                primary += 'J';
-                                secondary += 'J';
+                                primary += 'J'; secondary += 'J';
                             } else {
-                                primary += 'K';
-                                secondary += 'K';
+                                primary += 'K'; secondary += 'K';
                                 if (match(pos + 1, 'G')) pos++;
                             }
                             break;
-                            
                         case 'H':
                             if (!isVowel(charAt(pos - 1)) || isVowel(charAt(pos + 1))) {
-                                // H is silent between vowels or after consonant at start
-                                if (pos === 0 || isVowel(charAt(pos + 1))) {
-                                    primary += 'H';
-                                    secondary += 'H';
-                                }
+                                if (pos === 0 || isVowel(charAt(pos + 1))) { primary += 'H'; secondary += 'H'; }
                             }
                             break;
-                            
                         case 'J':
-                            primary += 'J';
-                            secondary += 'J';
+                            primary += 'J'; secondary += 'J';
                             if (match(pos + 1, 'J')) pos++;
                             break;
-                            
                         case 'K':
-                            if (pos === 0 || charAt(pos - 1) !== 'C') {
-                                primary += 'K';
-                                secondary += 'K';
-                            }
+                            if (pos === 0 || charAt(pos - 1) !== 'C') { primary += 'K'; secondary += 'K'; }
                             if (match(pos + 1, 'K')) pos++;
                             break;
-                            
                         case 'L':
-                            primary += 'L';
-                            secondary += 'L';
+                            primary += 'L'; secondary += 'L';
                             if (match(pos + 1, 'L')) {
-                                if (match(pos - 1, 'A') || match(pos - 1, 'O') || match(pos - 1, 'U') || match(pos - 1, 'I') || match(pos - 1, 'Y')) {
-                                    // Double L after vowel - keep both
-                                } else {
-                                    pos++;
-                                }
+                                if (!(match(pos - 1, 'A') || match(pos - 1, 'O') || match(pos - 1, 'U') || match(pos - 1, 'I') || match(pos - 1, 'Y'))) pos++;
                             }
                             break;
-                            
                         case 'M':
-                            primary += 'M';
-                            secondary += 'M';
+                            primary += 'M'; secondary += 'M';
                             if (match(pos + 1, 'M')) pos++;
                             break;
-                            
                         case 'N':
-                            primary += 'N';
-                            secondary += 'N';
+                            primary += 'N'; secondary += 'N';
                             if (match(pos + 1, 'N')) pos++;
                             break;
-                            
                         case 'P':
-                            if (match(pos + 1, 'H')) {
-                                primary += 'F';
-                                secondary += 'F';
-                                pos++;
-                            } else {
-                                primary += 'P';
-                                secondary += 'P';
+                            if (match(pos + 1, 'H')) { primary += 'F'; secondary += 'F'; pos++; }
+                            else {
+                                primary += 'P'; secondary += 'P';
                                 if (match(pos + 1, 'P') || match(pos + 1, 'B')) pos++;
                             }
                             break;
-                            
                         case 'Q':
-                            primary += 'K';
-                            secondary += 'K';
+                            primary += 'K'; secondary += 'K';
                             break;
-                            
                         case 'R':
-                            primary += 'R';
-                            secondary += 'R';
+                            primary += 'R'; secondary += 'R';
                             if (match(pos + 1, 'R')) pos++;
                             break;
-                            
                         case 'S':
                             if (match(pos + 1, 'I') && (match(pos + 2, 'O') || match(pos + 2, 'A'))) {
-                                primary += 'X';
-                                secondary += 'X';
-                                pos++;
+                                primary += 'X'; secondary += 'X'; pos++;
                             } else if (match(pos + 1, 'H')) {
-                                primary += 'X';
-                                secondary += 'X';
-                                pos++;
+                                primary += 'X'; secondary += 'X'; pos++;
                             } else if (match(pos + 1, 'C') && match(pos + 2, 'H')) {
-                                primary += 'SK';
-                                secondary += 'SK';
-                                pos += 2;
+                                primary += 'SK'; secondary += 'SK'; pos += 2;
                             } else {
-                                primary += 'S';
-                                secondary += 'S';
+                                primary += 'S'; secondary += 'S';
                                 if (match(pos + 1, 'S') || match(pos + 1, 'Z')) pos++;
                             }
                             break;
-                            
                         case 'T':
                             if (match(pos + 1, 'I') && (match(pos + 2, 'O') || match(pos + 2, 'A'))) {
-                                primary += 'X';
-                                secondary += 'X';
-                                pos++;
+                                primary += 'X'; secondary += 'X'; pos++;
                             } else if (match(pos + 1, 'H')) {
-                                primary += '0'; // theta
-                                secondary += 'T';
-                                pos++;
+                                primary += '0'; secondary += 'T'; pos++;
                             } else if (match(pos + 1, 'C') && match(pos + 2, 'H')) {
-                                primary += 'CH';
-                                secondary += 'CH';
-                                pos += 2;
+                                primary += 'CH'; secondary += 'CH'; pos += 2;
                             } else {
-                                primary += 'T';
-                                secondary += 'T';
+                                primary += 'T'; secondary += 'T';
                                 if (match(pos + 1, 'T') || match(pos + 1, 'D')) pos++;
                             }
                             break;
-                            
                         case 'V':
-                            primary += 'F';
-                            secondary += 'F';
+                            primary += 'F'; secondary += 'F';
                             if (match(pos + 1, 'V')) pos++;
                             break;
-                            
                         case 'W':
-                            if (isVowel(charAt(pos + 1))) {
-                                primary += 'W';
-                                secondary += 'W';
-                            }
+                            if (isVowel(charAt(pos + 1))) { primary += 'W'; secondary += 'W'; }
                             break;
-                            
                         case 'X':
-                            primary += 'KS';
-                            secondary += 'KS';
+                            primary += 'KS'; secondary += 'KS';
                             break;
-                            
                         case 'Y':
-                            if (isVowel(charAt(pos + 1))) {
-                                primary += 'Y';
-                                secondary += 'Y';
-                            }
+                            if (isVowel(charAt(pos + 1))) { primary += 'Y'; secondary += 'Y'; }
                             break;
-                            
                         case 'Z':
-                            primary += 'S';
-                            secondary += 'S';
+                            primary += 'S'; secondary += 'S';
                             if (match(pos + 1, 'Z')) pos++;
                             break;
                     }
-                    
                     pos++;
                 }
-                
                 return [primary, secondary];
             }
         };
 
         // Data storage
-        let airportsData = [];
-        let allFixesIndexed = [];
-        let currentAirportFixes = [];
+        let rawData = null;
+        let airportList = [];          // sorted list of airport codes that have fixes/waypoints
+        let airportItems = {};         // airport code -> array of {name, type, metaphone}
+        let allItemsIndexed = [];      // global flat list for "all airports" search
+        let currentAirportItems = [];  // items for the currently selected airport
 
         // Levenshtein distance for fuzzy matching
         function levenshteinDistance(a, b) {
             const matrix = [];
-            for (let i = 0; i <= b.length; i++) {
-                matrix[i] = [i];
-            }
-            for (let j = 0; j <= a.length; j++) {
-                matrix[0][j] = j;
-            }
+            for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+            for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
             for (let i = 1; i <= b.length; i++) {
                 for (let j = 1; j <= a.length; j++) {
                     if (b.charAt(i - 1) === a.charAt(j - 1)) {
@@ -495,24 +403,106 @@
             return matrix[b.length][a.length];
         }
 
-        // Load JSON file
+        // Load and index the JSON data
         async function loadData() {
             try {
                 const response = await fetch('procedures_and_fixes.json');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                rawData = await response.json();
+
+                // Build per-airport item lists from shared_fixes_list and shared_waypoints_list
+                const airportItemsMap = {};
+
+                // Index fixes
+                if (rawData.shared_fixes_list) {
+                    rawData.shared_fixes_list.forEach(fix => {
+                        const identifier = fix.identifier;
+                        const metaphone = DoubleMetaphone.encode(identifier);
+                        (fix.airports || []).forEach(apt => {
+                            if (!airportItemsMap[apt]) airportItemsMap[apt] = [];
+                            airportItemsMap[apt].push({
+                                name: identifier,
+                                type: 'fix',
+                                airport: apt,
+                                metaphone: metaphone,
+                                sharedWith: fix.airports.length
+                            });
+                        });
+                    });
                 }
-                const data = await response.json();
-                
-                airportsData = data.airports || data;
-                indexAllFixes();
+
+                // Index waypoints
+                if (rawData.shared_waypoints_list) {
+                    rawData.shared_waypoints_list.forEach(wp => {
+                        const identifier = wp.identifier;
+                        const metaphone = DoubleMetaphone.encode(identifier);
+                        (wp.airports || []).forEach(apt => {
+                            if (!airportItemsMap[apt]) airportItemsMap[apt] = [];
+                            airportItemsMap[apt].push({
+                                name: identifier,
+                                type: 'waypoint',
+                                airport: apt,
+                                metaphone: metaphone,
+                                sharedWith: wp.airports.length
+                            });
+                        });
+                    });
+                }
+
+                airportItems = airportItemsMap;
+
+                // Build sorted airport list (only airports that have data)
+                airportList = Object.keys(airportItemsMap).sort();
+
+                // Build global index (deduplicated — one entry per unique fix/waypoint)
+                const seen = new Set();
+                allItemsIndexed = [];
+
+                if (rawData.shared_fixes_list) {
+                    rawData.shared_fixes_list.forEach(fix => {
+                        const key = 'fix:' + fix.identifier;
+                        if (!seen.has(key)) {
+                            seen.add(key);
+                            allItemsIndexed.push({
+                                name: fix.identifier,
+                                type: 'fix',
+                                airports: fix.airports,
+                                airport: fix.airports.join(', '),
+                                metaphone: DoubleMetaphone.encode(fix.identifier),
+                                sharedWith: fix.airports.length
+                            });
+                        }
+                    });
+                }
+                if (rawData.shared_waypoints_list) {
+                    rawData.shared_waypoints_list.forEach(wp => {
+                        const key = 'wp:' + wp.identifier;
+                        if (!seen.has(key)) {
+                            seen.add(key);
+                            allItemsIndexed.push({
+                                name: wp.identifier,
+                                type: 'waypoint',
+                                airports: wp.airports,
+                                airport: wp.airports.join(', '),
+                                metaphone: DoubleMetaphone.encode(wp.identifier),
+                                sharedWith: wp.airports.length
+                            });
+                        }
+                    });
+                }
+
                 populateAirportDropdown();
                 
                 document.getElementById('airport-select').disabled = false;
                 document.getElementById('fix-search').disabled = false;
                 document.getElementById('search-btn').disabled = false;
                 document.getElementById('search-mode').disabled = false;
-                
+
+                const totalFixes = rawData.shared_fixes_list ? rawData.shared_fixes_list.length : 0;
+                const totalWaypoints = rawData.shared_waypoints_list ? rawData.shared_waypoints_list.length : 0;
+                document.getElementById('results').innerHTML = 
+                    `<div class="stats">Loaded ${totalFixes} shared fixes and ${totalWaypoints} shared waypoints across ${airportList.length} airports</div>`;
+
             } catch (error) {
                 console.error('Error loading JSON:', error);
                 document.getElementById('results').innerHTML = 
@@ -523,156 +513,56 @@
             }
         }
 
-        // Index all fixes globally
-        function indexAllFixes() {
-            allFixesIndexed = [];
-            airportsData.forEach(airport => {
-                if (airport.procedures) {
-                    airport.procedures.forEach(proc => {
-                        // Index the procedure itself as a searchable item
-                        const procName = proc.name || proc.id;
-                        const procMetaphone = DoubleMetaphone.encode(procName);
-                        allFixesIndexed.push({
-                            name: procName,
-                            type: 'procedure',
-                            procedure: procName,
-                            procedureId: proc.id,
-                            airport: airport.airport,
-                            metaphone: procMetaphone,
-                            fixes: proc.fixes || []
-                        });
-                        
-                        // Index individual fixes
-                        if (proc.fixes) {
-                            proc.fixes.forEach(fix => {
-                                const metaphone = DoubleMetaphone.encode(fix);
-                                allFixesIndexed.push({
-                                    name: fix,
-                                    type: 'fix',
-                                    procedure: procName,
-                                    procedureId: proc.id,
-                                    airport: airport.airport,
-                                    metaphone: metaphone
-                                });
-                            });
-                        }
-                    });
-                }
-            });
-        }
-
         // Populate airport dropdown
         function populateAirportDropdown() {
             const select = document.getElementById('airport-select');
             select.innerHTML = '<option value="">Select an airport...</option>';
             
-            airportsData.forEach((airport, index) => {
+            airportList.forEach(code => {
+                const items = airportItems[code] || [];
+                const fixCount = items.filter(i => i.type === 'fix').length;
+                const wpCount = items.filter(i => i.type === 'waypoint').length;
                 const option = document.createElement('option');
-                option.value = index;
-                option.textContent = `${airport.airport} (${getFixCount(airport)} fixes)`;
+                option.value = code;
+                option.textContent = `${code} (${fixCount} fixes, ${wpCount} waypoints)`;
                 select.appendChild(option);
             });
         }
 
-        // Count total fixes in airport
-        function getFixCount(airport) {
-            let count = 0;
-            if (airport.procedures) {
-                airport.procedures.forEach(proc => {
-                    if (proc.fixes) count += proc.fixes.length;
-                });
-            }
-            return count;
-        }
-
-        // Pre-index fixes for selected airport
-        function indexAirportFixes(airportIndex) {
-            const airport = airportsData[airportIndex];
-            currentAirportFixes = [];
-            
-            if (!airport.procedures) return;
-            
-            airport.procedures.forEach(proc => {
-                // Index the procedure itself
-                const procName = proc.name || proc.id;
-                const procMetaphone = DoubleMetaphone.encode(procName);
-                currentAirportFixes.push({
-                    name: procName,
-                    type: 'procedure',
-                    procedure: procName,
-                    procedureId: proc.id,
-                    airport: airport.airport,
-                    metaphone: procMetaphone,
-                    fixes: proc.fixes || []
-                });
-                
-                // Index individual fixes
-                if (proc.fixes) {
-                    proc.fixes.forEach(fix => {
-                        const metaphone = DoubleMetaphone.encode(fix);
-                        currentAirportFixes.push({
-                            name: fix,
-                            type: 'fix',
-                            procedure: procName,
-                            procedureId: proc.id,
-                            airport: airport.airport,
-                            metaphone: metaphone
-                        });
-                    });
-                }
-            });
-            
-            document.getElementById('results').innerHTML = 
-                `<div class="stats">Loaded ${currentAirportFixes.length} items (procedures + fixes) for ${airport.airport}</div>`;
-        }
-
         // Score a match based on multiple criteria
-        function scoreMatch(fix, searchTerm, searchMeta, useFuzzy) {
+        function scoreMatch(item, searchTerm, searchMeta, useFuzzy) {
             let matches = [];
             
-            // Exact match
-            if (fix.name === searchTerm) {
+            if (item.name === searchTerm) {
                 matches.push({ type: 'exact', score: 1000 });
-            }
-            // Starts with
-            else if (fix.name.startsWith(searchTerm)) {
+            } else if (item.name.startsWith(searchTerm)) {
                 matches.push({ type: 'prefix', score: 300 });
-            }
-            // Contains
-            else if (fix.name.includes(searchTerm)) {
+            } else if (item.name.includes(searchTerm)) {
                 matches.push({ type: 'contains', score: 200 });
             }
             
-            // Primary metaphone match
-            if (fix.metaphone[0] && fix.metaphone[0] === searchMeta[0] && searchMeta[0] !== '') {
+            if (item.metaphone[0] && item.metaphone[0] === searchMeta[0] && searchMeta[0] !== '') {
                 matches.push({ type: 'primary-metaphone', score: 150 });
             }
-            
-            // Secondary metaphone match
-            if (fix.metaphone[1] && fix.metaphone[1] === searchMeta[1] && searchMeta[1] !== '') {
+            if (item.metaphone[1] && item.metaphone[1] === searchMeta[1] && searchMeta[1] !== '') {
                 matches.push({ type: 'secondary-metaphone', score: 120 });
             }
-            
-            // Cross metaphone (primary matches secondary or vice versa)
-            if ((fix.metaphone[0] && fix.metaphone[0] === searchMeta[1] && searchMeta[1] !== '') ||
-                (fix.metaphone[1] && fix.metaphone[1] === searchMeta[0] && searchMeta[0] !== '')) {
+            if ((item.metaphone[0] && item.metaphone[0] === searchMeta[1] && searchMeta[1] !== '') ||
+                (item.metaphone[1] && item.metaphone[1] === searchMeta[0] && searchMeta[0] !== '')) {
                 matches.push({ type: 'cross-metaphone', score: 80 });
             }
             
-            // Fuzzy metaphone matching
             if (useFuzzy && searchMeta[0]) {
-                const primaryDist = levenshteinDistance(fix.metaphone[0] || '', searchMeta[0]);
-                const secondaryDist = levenshteinDistance(fix.metaphone[1] || '', searchMeta[0]);
+                const primaryDist = levenshteinDistance(item.metaphone[0] || '', searchMeta[0]);
+                const secondaryDist = levenshteinDistance(item.metaphone[1] || '', searchMeta[0]);
                 const minDist = Math.min(primaryDist, secondaryDist);
-                
                 if (minDist <= 1 && minDist < Math.max(searchMeta[0].length, 2)) {
                     matches.push({ type: 'fuzzy-metaphone', score: 50 - (minDist * 10) });
                 }
             }
             
-            // Levenshtein distance fallback
             if (useFuzzy) {
-                const dist = levenshteinDistance(fix.name, searchTerm);
+                const dist = levenshteinDistance(item.name, searchTerm);
                 const threshold = Math.max(searchTerm.length / 2, 2);
                 if (dist <= threshold) {
                     matches.push({ type: 'fuzzy-spelling', score: 30 - (dist * 5) });
@@ -695,9 +585,9 @@
             }
             
             const searchMeta = DoubleMetaphone.encode(searchTerm);
-            const fixesToSearch = searchMode === 'all-airports' ? allFixesIndexed : currentAirportFixes;
+            const itemsToSearch = searchMode === 'all-airports' ? allItemsIndexed : currentAirportItems;
             
-            if (fixesToSearch.length === 0) {
+            if (itemsToSearch.length === 0) {
                 const msg = searchMode === 'all-airports' 
                     ? 'No data loaded'
                     : 'Select an airport first';
@@ -707,55 +597,36 @@
             
             const results = [];
             
-            // Score all fixes
-            fixesToSearch.forEach(fix => {
-                const matches = scoreMatch(fix, searchTerm, searchMeta, useFuzzy);
+            itemsToSearch.forEach(item => {
+                const matches = scoreMatch(item, searchTerm, searchMeta, useFuzzy);
                 if (matches.length > 0) {
                     const totalScore = matches.reduce((sum, m) => sum + m.score, 0);
-                    results.push({
-                        ...fix,
-                        score: totalScore,
-                        matches: matches
-                    });
+                    results.push({ ...item, score: totalScore, matches: matches });
                 }
             });
             
-            // Sort by score descending
             results.sort((a, b) => b.score - a.score);
             
-            // Display results
             if (results.length === 0) {
-                resultsDiv.innerHTML = `
-                    <div class="no-results">
-                        No matches found for "${searchTerm}"
-                    </div>
-                `;
+                resultsDiv.innerHTML = `<div class="no-results">No matches found for "${searchTerm}"</div>`;
             } else {
                 let html = `<div class="stats">Found ${results.length} match(es)</div>`;
                 
-                // Group by airport if global search
                 if (searchMode === 'all-airports') {
-                    const byAirport = {};
-                    results.forEach(r => {
-                        if (!byAirport[r.airport]) {
-                            byAirport[r.airport] = [];
-                        }
-                        byAirport[r.airport].push(r);
-                    });
-                    
-                    Object.keys(byAirport).sort().forEach(airport => {
-                        html += `<div class="match-group-header">${airport}</div>`;
-                        html += byAirport[airport].map(r => buildFixResultHtml(r)).join('');
-                    });
+                    // Global search: just list results (they're already deduplicated)
+                    html += results.slice(0, 100).map(r => buildResultHtml(r)).join('');
+                    if (results.length > 100) {
+                        html += `<div class="no-results">Showing first 100 of ${results.length} results. Try a more specific search.</div>`;
+                    }
                 } else {
-                    html += results.map(r => buildFixResultHtml(r)).join('');
+                    html += results.map(r => buildResultHtml(r)).join('');
                 }
                 
                 resultsDiv.innerHTML = html;
             }
         }
 
-        function buildFixResultHtml(result) {
+        function buildResultHtml(result) {
             const badgeMap = {
                 'exact': 'badge-exact',
                 'prefix': 'badge-primary',
@@ -766,7 +637,6 @@
                 'fuzzy-metaphone': 'badge-fuzzy',
                 'fuzzy-spelling': 'badge-fuzzy'
             };
-            
             const badgeText = {
                 'exact': 'EXACT',
                 'prefix': 'STARTS WITH',
@@ -782,26 +652,27 @@
                 `<span class="badge ${badgeMap[m.type]}">${badgeText[m.type]}</span>`
             ).join('');
             
-            let infoHtml = '';
-            if (result.type === 'procedure') {
-                infoHtml = `<strong>Procedure:</strong> ${result.name}`;
-                if (result.fixes && result.fixes.length > 0) {
-                    infoHtml += `<br><small>Contains fixes: ${result.fixes.join(', ')}</small>`;
-                }
-            } else {
-                infoHtml = `Procedure: <strong>${result.procedure}</strong> (${result.procedureId})`;
-            }
+            // Type badge
+            const typeBadge = result.type === 'fix' 
+                ? '<span class="badge badge-fix">FIX</span>' 
+                : '<span class="badge badge-waypoint">WAYPOINT</span>';
             
-            if (result.airport) {
-                infoHtml += ` @ <strong>${result.airport}</strong>`;
+            let infoHtml = '';
+            if (result.airports && result.airports.length > 1) {
+                const airportDisplay = result.airports.length <= 5 
+                    ? result.airports.join(', ')
+                    : result.airports.slice(0, 5).join(', ') + ` (+${result.airports.length - 5} more)`;
+                infoHtml = `Shared across <strong>${result.airports.length}</strong> airports: ${airportDisplay}`;
+            } else if (result.airport) {
+                infoHtml = `Airport: <strong>${result.airport}</strong>`;
             }
             infoHtml += `<br><small>Sounds like: ${result.metaphone.join(' / ')}</small>`;
             
-            const typeLabel = result.type === 'procedure' ? ' [PROCEDURE]' : '';
+            const cssClass = result.type === 'waypoint' ? 'fix-result waypoint' : 'fix-result';
             
             return `
-                <div class="fix-result">
-                    <div class="fix-name">${result.name}${typeLabel}</div>
+                <div class="${cssClass}">
+                    <div class="fix-name">${result.name} ${typeBadge}</div>
                     <div class="match-badges">${badgesHtml}</div>
                     <div class="procedure-info">${infoHtml}</div>
                 </div>
@@ -813,17 +684,22 @@
             const isSingleAirport = e.target.value === 'single-airport';
             document.getElementById('airport-section').style.display = isSingleAirport ? 'block' : 'none';
             document.getElementById('airport-select').disabled = !isSingleAirport;
-            currentAirportFixes = [];
+            currentAirportItems = [];
             document.getElementById('fix-search').value = '';
             document.getElementById('results').innerHTML = '<div class="no-results">Enter a search term</div>';
         });
 
         document.getElementById('airport-select').addEventListener('change', function(e) {
-            if (e.target.value !== '') {
-                indexAirportFixes(parseInt(e.target.value));
+            const code = e.target.value;
+            if (code) {
+                currentAirportItems = airportItems[code] || [];
+                const fixCount = currentAirportItems.filter(i => i.type === 'fix').length;
+                const wpCount = currentAirportItems.filter(i => i.type === 'waypoint').length;
+                document.getElementById('results').innerHTML = 
+                    `<div class="stats">Loaded ${fixCount} fixes and ${wpCount} waypoints for ${code}</div>`;
                 document.getElementById('fix-search').focus();
             } else {
-                currentAirportFixes = [];
+                currentAirportItems = [];
                 document.getElementById('results').innerHTML = '<div class="no-results">Select an airport</div>';
             }
         });
@@ -831,19 +707,14 @@
         document.getElementById('search-btn').addEventListener('click', searchFixes);
 
         document.getElementById('fix-search').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                searchFixes();
-            }
+            if (e.key === 'Enter') searchFixes();
         });
 
-        // Real-time search with debounce
         let debounceTimer;
         document.getElementById('fix-search').addEventListener('input', function(e) {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
-                if (e.target.value.length >= 2) {
-                    searchFixes();
-                }
+                if (e.target.value.length >= 2) searchFixes();
             }, 300);
         });
 
