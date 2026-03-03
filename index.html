@@ -529,12 +529,27 @@
             airportsData.forEach(airport => {
                 if (airport.procedures) {
                     airport.procedures.forEach(proc => {
+                        // Index the procedure itself as a searchable item
+                        const procName = proc.name || proc.id;
+                        const procMetaphone = DoubleMetaphone.encode(procName);
+                        allFixesIndexed.push({
+                            name: procName,
+                            type: 'procedure',
+                            procedure: procName,
+                            procedureId: proc.id,
+                            airport: airport.airport,
+                            metaphone: procMetaphone,
+                            fixes: proc.fixes || []
+                        });
+                        
+                        // Index individual fixes
                         if (proc.fixes) {
                             proc.fixes.forEach(fix => {
                                 const metaphone = DoubleMetaphone.encode(fix);
                                 allFixesIndexed.push({
                                     name: fix,
-                                    procedure: proc.name || proc.id,
+                                    type: 'fix',
+                                    procedure: procName,
                                     procedureId: proc.id,
                                     airport: airport.airport,
                                     metaphone: metaphone
@@ -578,12 +593,27 @@
             if (!airport.procedures) return;
             
             airport.procedures.forEach(proc => {
+                // Index the procedure itself
+                const procName = proc.name || proc.id;
+                const procMetaphone = DoubleMetaphone.encode(procName);
+                currentAirportFixes.push({
+                    name: procName,
+                    type: 'procedure',
+                    procedure: procName,
+                    procedureId: proc.id,
+                    airport: airport.airport,
+                    metaphone: procMetaphone,
+                    fixes: proc.fixes || []
+                });
+                
+                // Index individual fixes
                 if (proc.fixes) {
                     proc.fixes.forEach(fix => {
                         const metaphone = DoubleMetaphone.encode(fix);
                         currentAirportFixes.push({
                             name: fix,
-                            procedure: proc.name || proc.id,
+                            type: 'fix',
+                            procedure: procName,
                             procedureId: proc.id,
                             airport: airport.airport,
                             metaphone: metaphone
@@ -593,7 +623,7 @@
             });
             
             document.getElementById('results').innerHTML = 
-                `<div class="stats">Loaded ${currentAirportFixes.length} fixes for ${airport.airport}</div>`;
+                `<div class="stats">Loaded ${currentAirportFixes.length} items (procedures + fixes) for ${airport.airport}</div>`;
         }
 
         // Score a match based on multiple criteria
@@ -752,15 +782,26 @@
                 `<span class="badge ${badgeMap[m.type]}">${badgeText[m.type]}</span>`
             ).join('');
             
-            let infoHtml = `Procedure: <strong>${result.procedure}</strong> (${result.procedureId})`;
+            let infoHtml = '';
+            if (result.type === 'procedure') {
+                infoHtml = `<strong>Procedure:</strong> ${result.name}`;
+                if (result.fixes && result.fixes.length > 0) {
+                    infoHtml += `<br><small>Contains fixes: ${result.fixes.join(', ')}</small>`;
+                }
+            } else {
+                infoHtml = `Procedure: <strong>${result.procedure}</strong> (${result.procedureId})`;
+            }
+            
             if (result.airport) {
                 infoHtml += ` @ <strong>${result.airport}</strong>`;
             }
             infoHtml += `<br><small>Sounds like: ${result.metaphone.join(' / ')}</small>`;
             
+            const typeLabel = result.type === 'procedure' ? ' [PROCEDURE]' : '';
+            
             return `
                 <div class="fix-result">
-                    <div class="fix-name">${result.name}</div>
+                    <div class="fix-name">${result.name}${typeLabel}</div>
                     <div class="match-badges">${badgesHtml}</div>
                     <div class="procedure-info">${infoHtml}</div>
                 </div>
