@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <title>Procedure Fix Lookup</title>
+
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 900px;
+            max-width: 950px;
             margin: 40px auto;
             padding: 20px;
             background: #f4f6f8;
@@ -15,12 +16,16 @@
         h1 { margin-bottom: 5px; }
         .subtitle { color: #666; margin-bottom: 25px; }
 
-        label { font-weight: bold; display:block; margin-top:15px; }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-top: 15px;
+        }
 
         input, select {
             width: 100%;
             padding: 10px;
-            margin-top:5px;
+            margin-top: 5px;
             font-size: 16px;
         }
 
@@ -40,7 +45,7 @@
         .result {
             background: white;
             padding: 15px;
-            margin-top: 15px;
+            margin-top: 20px;
             border-left: 5px solid #4CAF50;
         }
 
@@ -68,44 +73,50 @@
 <h1>Procedure Fix Lookup</h1>
 <div class="subtitle">Phonetic search for STAR/DP waypoints</div>
 
-<label>Airport Identifier (type or select):</label>
-<input type="text" id="airportInput" placeholder="Type airport (e.g. DEN)">
+<label>Airport Identifier (Type or Select):</label>
+<input type="text" id="airportInput" placeholder="e.g. DEN">
 
 <select id="airportSelect">
     <option value="">Select airport...</option>
 </select>
 
 <label>Search Fix:</label>
-<input type="text" id="fixInput" placeholder="Type fix (e.g. FOAMM, FOAMY, CLASH)">
+<input type="text" id="fixInput" placeholder="e.g. FOAMM, FOAMY, CLASH">
 
 <button onclick="search()">Search</button>
 
 <div id="results"></div>
 
 <script>
-let airportsData = [];
-let currentAirport = null;
 
-/* ---------------------------
-   Simple Double Metaphone
----------------------------- */
-function simpleMetaphone(str) {
+let airportsData = [];
+
+/* -------------------------
+   Simple Phonetic Cleaner
+--------------------------*/
+function phoneticKey(str) {
     return str
         .toUpperCase()
         .replace(/[AEIOU]/g, '')
         .replace(/(.)\1+/g, '\$1');
 }
 
-/* ---------------------------
-   Load JSON
----------------------------- */
+/* -------------------------
+   Load JSON + Sort Airports
+--------------------------*/
 async function loadData() {
     try {
         const response = await fetch('procedures_and_fixes.json');
         const data = await response.json();
+
         airportsData = data.airports || data;
 
-        // Sort airports alphabetically
+        // Normalize airport codes
+        airportsData.forEach(a => {
+            a.airport = a.airport.trim().toUpperCase();
+        });
+
+        // ✅ Alphabetical sort
         airportsData.sort((a, b) =>
             a.airport.localeCompare(b.airport)
         );
@@ -118,6 +129,9 @@ async function loadData() {
     }
 }
 
+/* -------------------------
+   Populate Dropdown
+--------------------------*/
 function populateDropdown() {
     const select = document.getElementById("airportSelect");
     select.innerHTML = `<option value="">Select airport...</option>`;
@@ -130,9 +144,9 @@ function populateDropdown() {
     });
 }
 
-/* ---------------------------
-   Airport Selection Sync
----------------------------- */
+/* -------------------------
+   Sync Input + Dropdown
+--------------------------*/
 document.getElementById("airportSelect").addEventListener("change", e => {
     document.getElementById("airportInput").value = e.target.value;
 });
@@ -142,35 +156,45 @@ document.getElementById("airportInput").addEventListener("input", e => {
     document.getElementById("airportSelect").value = val;
 });
 
-/* ---------------------------
-   Search
----------------------------- */
+/* -------------------------
+   Search Logic
+--------------------------*/
 function search() {
-    const airportCode = document.getElementById("airportInput").value.toUpperCase().trim();
-    const fixSearch = document.getElementById("fixInput").value.toUpperCase().trim();
+
+    const airportCode = document.getElementById("airportInput")
+        .value.trim().toUpperCase();
+
+    const fixSearch = document.getElementById("fixInput")
+        .value.trim().toUpperCase();
+
     const resultsDiv = document.getElementById("results");
     resultsDiv.innerHTML = "";
 
     if (!airportCode) {
-        resultsDiv.innerHTML = `<div class="error">Enter an airport identifier.</div>`;
+        resultsDiv.innerHTML =
+            `<div class="error">Enter an airport identifier.</div>`;
         return;
     }
 
     const airport = airportsData.find(a => a.airport === airportCode);
 
     if (!airport) {
-        resultsDiv.innerHTML = `<div class="error">Airport not found.</div>`;
+        resultsDiv.innerHTML =
+            `<div class="error">Airport not found.</div>`;
         return;
     }
 
     if (!fixSearch) {
-        resultsDiv.innerHTML = `<div class="error">Enter a fix to search.</div>`;
+        resultsDiv.innerHTML =
+            `<div class="error">Enter a fix to search.</div>`;
         return;
     }
 
-    const searchMeta = simpleMetaphone(fixSearch);
+    const searchKey = phoneticKey(fixSearch);
+    let matchFound = false;
 
     airport.procedures.forEach(proc => {
+
         proc.fixes.forEach(fix => {
 
             let matchType = null;
@@ -181,13 +205,17 @@ function search() {
             else if (fix.includes(fixSearch)) {
                 matchType = "Contains";
             }
-            else if (simpleMetaphone(fix) === searchMeta) {
+            else if (phoneticKey(fix) === searchKey) {
                 matchType = "Phonetic";
             }
 
             if (matchType) {
-                const allFixes = proc.fixes.map(f =>
-                    f === fix ? `<span class="fix-highlight">${f}</span>` : f
+                matchFound = true;
+
+                const fullRoute = proc.fixes.map(f =>
+                    f === fix
+                        ? `<span class="fix-highlight">${f}</span>`
+                        : f
                 ).join(" → ");
 
                 resultsDiv.innerHTML += `
@@ -201,20 +229,23 @@ function search() {
                         </div>
                         <div style="margin-top:8px;">
                             <strong>Full Procedure Route:</strong><br>
-                            ${allFixes}
+                            ${fullRoute}
                         </div>
                     </div>
                 `;
             }
         });
+
     });
 
-    if (!resultsDiv.innerHTML) {
-        resultsDiv.innerHTML = `<div class="error">No matches found.</div>`;
+    if (!matchFound) {
+        resultsDiv.innerHTML =
+            `<div class="error">No matches found.</div>`;
     }
 }
 
 loadData();
+
 </script>
 
 </body>
