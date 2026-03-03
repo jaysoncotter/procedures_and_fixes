@@ -1,606 +1,221 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>STAR/DP Fix Search</title>
+    <title>Procedure Fix Lookup</title>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 800px;
-            margin: 50px auto;
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
             padding: 20px;
-            background-color: #f5f5f5;
+            background: #f4f6f8;
         }
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
-        }
-        .subtitle {
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 0.9em;
-        }
-        .search-section {
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #555;
-        }
-        select, input {
+
+        h1 { margin-bottom: 5px; }
+        .subtitle { color: #666; margin-bottom: 25px; }
+
+        label { font-weight: bold; display:block; margin-top:15px; }
+
+        input, select {
             width: 100%;
             padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 4px;
+            margin-top:5px;
             font-size: 16px;
-            box-sizing: border-box;
         }
-        select:focus, input:focus {
-            outline: none;
-            border-color: #4CAF50;
-        }
+
         button {
-            width: 100%;
+            margin-top: 15px;
             padding: 12px;
-            background-color: #4CAF50;
+            width: 100%;
+            background: #4CAF50;
             color: white;
             border: none;
-            border-radius: 4px;
             font-size: 16px;
             cursor: pointer;
-            margin-top: 10px;
         }
-        button:hover {
-            background-color: #45a049;
-        }
-        .results {
-            margin-top: 30px;
-        }
-        .fix-result {
-            background: #f9f9f9;
-            border-left: 4px solid #4CAF50;
+
+        button:hover { background: #45a049; }
+
+        .result {
+            background: white;
             padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 0 4px 4px 0;
+            margin-top: 15px;
+            border-left: 5px solid #4CAF50;
         }
-        .fix-name {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #333;
-            font-family: monospace;
-        }
-        .procedure-info {
-            color: #666;
-            font-size: 0.9em;
-            margin-top: 5px;
-        }
-        .phonetic-match {
-            display: inline-block;
+
+        .match-tag {
             background: #e3f2fd;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 0.8em;
-            color: #1976d2;
-            margin-left: 10px;
+            padding: 3px 8px;
+            font-size: 12px;
+            border-radius: 4px;
+            margin-left: 8px;
         }
-        .no-results {
-            color: #999;
-            font-style: italic;
-            padding: 20px;
-            text-align: center;
+
+        .fix-highlight {
+            font-weight: bold;
+            color: #d32f2f;
         }
-        .loading {
-            color: #666;
-            font-style: italic;
-        }
-        .stats {
-            margin-bottom: 15px;
-            color: #666;
-            font-size: 0.9em;
+
+        .error {
+            color: red;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Procedure Fix Lookup</h1>
-        <div class="subtitle">Phonetic search for STAR/DP waypoints (e.g., type "FOAMY" to find "FOAMM")</div>
-        
-        <div class="search-section">
-            <label for="airport-select">Select Airport (Facility):</label>
-            <select id="airport-select" disabled>
-                <option value="">Loading airports...</option>
-            </select>
-        </div>
 
-        <div class="search-section">
-            <label for="fix-search">Search Fix (5-letter identifier or phonetic spelling):</label>
-            <input type="text" id="fix-search" placeholder="e.g., FOAMY, FLATY, etc." maxlength="10" disabled>
-        </div>
+<h1>Procedure Fix Lookup</h1>
+<div class="subtitle">Phonetic search for STAR/DP waypoints</div>
 
-        <button id="search-btn" disabled>Search</button>
+<label>Airport Identifier (type or select):</label>
+<input type="text" id="airportInput" placeholder="Type airport (e.g. DEN)">
 
-        <div class="results" id="results">
-            <div class="no-results">Select an airport and enter a search term</div>
-        </div>
-    </div>
+<select id="airportSelect">
+    <option value="">Select airport...</option>
+</select>
 
-    <script>
-        // Double Metaphone Implementation
-        const DoubleMetaphone = {
-            encode: function(str) {
-                if (!str) return ["", ""];
-                str = str.toUpperCase().trim();
-                if (str.length === 0) return ["", ""];
-                
-                // Primary and secondary keys
-                let primary = "";
-                let secondary = "";
-                let pos = 0;
-                
-                // Helper functions
-                const isVowel = (c) => 'AEIOU'.indexOf(c) !== -1;
-                const charAt = (i) => i < str.length ? str[i] : '';
-                const match = (i, sub) => str.substring(i, i + sub.length) === sub;
-                
-                // Handle first character special cases
-                if (match(0, 'PN') || match(0, 'AE') || match(0, 'KN') || match(0, 'GN') || match(0, 'WR')) {
-                    pos++;
-                }
-                if (match(0, 'X')) {
-                    primary += 'S';
-                    secondary += 'S';
-                    pos++;
-                }
-                
-                // Main processing loop
-                while (pos < str.length) {
-                    const ch = charAt(pos);
-                    
-                    // Skip vowels except at start (handled above)
-                    if (isVowel(ch) && pos > 0) {
-                        pos++;
-                        continue;
-                    }
-                    
-                    switch (ch) {
-                        case 'B':
-                            primary += 'P';
-                            secondary += 'P';
-                            if (match(pos + 1, 'B')) pos++;
-                            break;
-                            
-                        case 'C':
-                            if (match(pos + 1, 'K') || match(pos + 1, 'S')) {
-                                if (match(pos + 1, 'K')) {
-                                    primary += 'K';
-                                    secondary += 'K';
-                                } else {
-                                    primary += 'S';
-                                    secondary += 'S';
-                                }
-                            } else if (match(pos + 1, 'I') && match(pos + 2, 'A')) {
-                                primary += 'X';
-                                secondary += 'X';
-                            } else if (match(pos + 1, 'H')) {
-                                if (pos === 0 && !isVowel(charAt(2))) {
-                                    primary += 'K';
-                                    secondary += 'K';
-                                } else {
-                                    primary += 'X';
-                                    secondary += 'X';
-                                }
-                                pos++;
-                            } else {
-                                primary += 'K';
-                                secondary += 'K';
-                            }
-                            break;
-                            
-                        case 'D':
-                            if (match(pos + 1, 'G') && (match(pos + 2, 'E') || match(pos + 2, 'Y') || match(pos + 2, 'I'))) {
-                                primary += 'J';
-                                secondary += 'J';
-                                pos += 2;
-                            } else {
-                                primary += 'T';
-                                secondary += 'T';
-                                if (match(pos + 1, 'D') || match(pos + 1, 'T')) pos++;
-                            }
-                            break;
-                            
-                        case 'F':
-                            primary += 'F';
-                            secondary += 'F';
-                            if (match(pos + 1, 'F')) pos++;
-                            break;
-                            
-                        case 'G':
-                            if (match(pos + 1, 'H')) {
-                                if (!isVowel(charAt(pos + 2))) {
-                                    primary += 'K';
-                                    secondary += 'K';
-                                    pos++;
-                                }
-                            } else if (match(pos + 1, 'N')) {
-                                if (pos === 0) {
-                                    primary += 'N';
-                                    secondary += 'KN';
-                                } else {
-                                    primary += 'N';
-                                    secondary += 'N';
-                                }
-                            } else if (match(pos + 1, 'I') && (match(pos + 2, 'E') || match(pos + 2, 'L'))) {
-                                primary += 'J';
-                                secondary += 'J';
-                            } else {
-                                primary += 'K';
-                                secondary += 'K';
-                                if (match(pos + 1, 'G')) pos++;
-                            }
-                            break;
-                            
-                        case 'H':
-                            if (!isVowel(charAt(pos - 1)) || isVowel(charAt(pos + 1))) {
-                                // H is silent between vowels or after consonant at start
-                                if (pos === 0 || isVowel(charAt(pos + 1))) {
-                                    primary += 'H';
-                                    secondary += 'H';
-                                }
-                            }
-                            break;
-                            
-                        case 'J':
-                            primary += 'J';
-                            secondary += 'J';
-                            if (match(pos + 1, 'J')) pos++;
-                            break;
-                            
-                        case 'K':
-                            if (pos === 0 || charAt(pos - 1) !== 'C') {
-                                primary += 'K';
-                                secondary += 'K';
-                            }
-                            if (match(pos + 1, 'K')) pos++;
-                            break;
-                            
-                        case 'L':
-                            primary += 'L';
-                            secondary += 'L';
-                            if (match(pos + 1, 'L')) {
-                                if (match(pos - 1, 'A') || match(pos - 1, 'O') || match(pos - 1, 'U') || match(pos - 1, 'I') || match(pos - 1, 'Y')) {
-                                    // Double L after vowel - keep both
-                                } else {
-                                    pos++;
-                                }
-                            }
-                            break;
-                            
-                        case 'M':
-                            primary += 'M';
-                            secondary += 'M';
-                            if (match(pos + 1, 'M')) pos++;
-                            break;
-                            
-                        case 'N':
-                            primary += 'N';
-                            secondary += 'N';
-                            if (match(pos + 1, 'N')) pos++;
-                            break;
-                            
-                        case 'P':
-                            if (match(pos + 1, 'H')) {
-                                primary += 'F';
-                                secondary += 'F';
-                                pos++;
-                            } else {
-                                primary += 'P';
-                                secondary += 'P';
-                                if (match(pos + 1, 'P') || match(pos + 1, 'B')) pos++;
-                            }
-                            break;
-                            
-                        case 'Q':
-                            primary += 'K';
-                            secondary += 'K';
-                            break;
-                            
-                        case 'R':
-                            primary += 'R';
-                            secondary += 'R';
-                            if (match(pos + 1, 'R')) pos++;
-                            break;
-                            
-                        case 'S':
-                            if (match(pos + 1, 'I') && (match(pos + 2, 'O') || match(pos + 2, 'A'))) {
-                                primary += 'X';
-                                secondary += 'X';
-                                pos++;
-                            } else if (match(pos + 1, 'H')) {
-                                primary += 'X';
-                                secondary += 'X';
-                                pos++;
-                            } else if (match(pos + 1, 'C') && match(pos + 2, 'H')) {
-                                primary += 'SK';
-                                secondary += 'SK';
-                                pos += 2;
-                            } else {
-                                primary += 'S';
-                                secondary += 'S';
-                                if (match(pos + 1, 'S') || match(pos + 1, 'Z')) pos++;
-                            }
-                            break;
-                            
-                        case 'T':
-                            if (match(pos + 1, 'I') && (match(pos + 2, 'O') || match(pos + 2, 'A'))) {
-                                primary += 'X';
-                                secondary += 'X';
-                                pos++;
-                            } else if (match(pos + 1, 'H')) {
-                                primary += '0'; // theta
-                                secondary += 'T';
-                                pos++;
-                            } else if (match(pos + 1, 'C') && match(pos + 2, 'H')) {
-                                primary += 'CH';
-                                secondary += 'CH';
-                                pos += 2;
-                            } else {
-                                primary += 'T';
-                                secondary += 'T';
-                                if (match(pos + 1, 'T') || match(pos + 1, 'D')) pos++;
-                            }
-                            break;
-                            
-                        case 'V':
-                            primary += 'F';
-                            secondary += 'F';
-                            if (match(pos + 1, 'V')) pos++;
-                            break;
-                            
-                        case 'W':
-                            if (isVowel(charAt(pos + 1))) {
-                                primary += 'W';
-                                secondary += 'W';
-                            }
-                            break;
-                            
-                        case 'X':
-                            primary += 'KS';
-                            secondary += 'KS';
-                            break;
-                            
-                        case 'Y':
-                            if (isVowel(charAt(pos + 1))) {
-                                primary += 'Y';
-                                secondary += 'Y';
-                            }
-                            break;
-                            
-                        case 'Z':
-                            primary += 'S';
-                            secondary += 'S';
-                            if (match(pos + 1, 'Z')) pos++;
-                            break;
-                    }
-                    
-                    pos++;
-                }
-                
-                return [primary, secondary];
+<label>Search Fix:</label>
+<input type="text" id="fixInput" placeholder="Type fix (e.g. FOAMM, FOAMY, CLASH)">
+
+<button onclick="search()">Search</button>
+
+<div id="results"></div>
+
+<script>
+let airportsData = [];
+let currentAirport = null;
+
+/* ---------------------------
+   Simple Double Metaphone
+---------------------------- */
+function simpleMetaphone(str) {
+    return str
+        .toUpperCase()
+        .replace(/[AEIOU]/g, '')
+        .replace(/(.)\1+/g, '\$1');
+}
+
+/* ---------------------------
+   Load JSON
+---------------------------- */
+async function loadData() {
+    try {
+        const response = await fetch('procedures_and_fixes.json');
+        const data = await response.json();
+        airportsData = data.airports || data;
+
+        // Sort airports alphabetically
+        airportsData.sort((a, b) =>
+            a.airport.localeCompare(b.airport)
+        );
+
+        populateDropdown();
+
+    } catch (err) {
+        document.getElementById("results").innerHTML =
+            `<div class="error">Error loading JSON: ${err}</div>`;
+    }
+}
+
+function populateDropdown() {
+    const select = document.getElementById("airportSelect");
+    select.innerHTML = `<option value="">Select airport...</option>`;
+
+    airportsData.forEach(a => {
+        const option = document.createElement("option");
+        option.value = a.airport;
+        option.textContent = a.airport;
+        select.appendChild(option);
+    });
+}
+
+/* ---------------------------
+   Airport Selection Sync
+---------------------------- */
+document.getElementById("airportSelect").addEventListener("change", e => {
+    document.getElementById("airportInput").value = e.target.value;
+});
+
+document.getElementById("airportInput").addEventListener("input", e => {
+    const val = e.target.value.toUpperCase();
+    document.getElementById("airportSelect").value = val;
+});
+
+/* ---------------------------
+   Search
+---------------------------- */
+function search() {
+    const airportCode = document.getElementById("airportInput").value.toUpperCase().trim();
+    const fixSearch = document.getElementById("fixInput").value.toUpperCase().trim();
+    const resultsDiv = document.getElementById("results");
+    resultsDiv.innerHTML = "";
+
+    if (!airportCode) {
+        resultsDiv.innerHTML = `<div class="error">Enter an airport identifier.</div>`;
+        return;
+    }
+
+    const airport = airportsData.find(a => a.airport === airportCode);
+
+    if (!airport) {
+        resultsDiv.innerHTML = `<div class="error">Airport not found.</div>`;
+        return;
+    }
+
+    if (!fixSearch) {
+        resultsDiv.innerHTML = `<div class="error">Enter a fix to search.</div>`;
+        return;
+    }
+
+    const searchMeta = simpleMetaphone(fixSearch);
+
+    airport.procedures.forEach(proc => {
+        proc.fixes.forEach(fix => {
+
+            let matchType = null;
+
+            if (fix === fixSearch) {
+                matchType = "Exact";
             }
-        };
-
-        // Data storage
-        let airportsData = [];
-        let currentAirportFixes = [];
-
-        // Load JSON file
-        async function loadData() {
-            try {
-                // Try to load procedures_and_fixes.json from same directory
-                const response = await fetch('procedures_and_fixes.json');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                
-                airportsData = data.airports || data;
-                populateAirportDropdown();
-                
-                document.getElementById('airport-select').disabled = false;
-                document.getElementById('fix-search').disabled = false;
-                document.getElementById('search-btn').disabled = false;
-                
-            } catch (error) {
-                console.error('Error loading JSON:', error);
-                document.getElementById('results').innerHTML = 
-                    `<div class="no-results" style="color: red;">
-                        Error loading procedures_and_fixes.json. Make sure the file is in the same directory.<br>
-                        Error: ${error.message}
-                    </div>`;
+            else if (fix.includes(fixSearch)) {
+                matchType = "Contains";
             }
-        }
-
-        // Populate airport dropdown
-        function populateAirportDropdown() {
-            const select = document.getElementById('airport-select');
-            select.innerHTML = '<option value="">Select an airport...</option>';
-            
-            airportsData.forEach((airport, index) => {
-                const option = document.createElement('option');
-                option.value = index;
-                option.textContent = `${airport.airport} (${getFixCount(airport)} fixes)`;
-                select.appendChild(option);
-            });
-        }
-
-        // Count total fixes in airport
-        function getFixCount(airport) {
-            let count = 0;
-            if (airport.procedures) {
-                airport.procedures.forEach(proc => {
-                    if (proc.fixes) count += proc.fixes.length;
-                });
+            else if (simpleMetaphone(fix) === searchMeta) {
+                matchType = "Phonetic";
             }
-            return count;
-        }
 
-        // Pre-index fixes for selected airport with metaphone codes
-        function indexAirportFixes(airportIndex) {
-            const airport = airportsData[airportIndex];
-            currentAirportFixes = [];
-            
-            if (!airport.procedures) return;
-            
-            airport.procedures.forEach(proc => {
-                if (proc.fixes) {
-                    proc.fixes.forEach(fix => {
-                        const metaphone = DoubleMetaphone.encode(fix);
-                        currentAirportFixes.push({
-                            name: fix,
-                            procedure: proc.name || proc.id,
-                            procedureId: proc.id,
-                            metaphone: metaphone
-                        });
-                    });
-                }
-            });
-            
-            // Update stats
-            document.getElementById('results').innerHTML = 
-                `<div class="stats">Loaded ${currentAirportFixes.length} fixes for ${airport.airport}</div>`;
-        }
+            if (matchType) {
+                const allFixes = proc.fixes.map(f =>
+                    f === fix ? `<span class="fix-highlight">${f}</span>` : f
+                ).join(" → ");
 
-        // Search function
-        function searchFixes() {
-            const searchTerm = document.getElementById('fix-search').value.trim().toUpperCase();
-            const resultsDiv = document.getElementById('results');
-            
-            if (!searchTerm) {
-                resultsDiv.innerHTML = '<div class="no-results">Enter a search term</div>';
-                return;
-            }
-            
-            if (currentAirportFixes.length === 0) {
-                resultsDiv.innerHTML = '<div class="no-results">Select an airport first</div>';
-                return;
-            }
-            
-            const searchMeta = DoubleMetaphone.encode(searchTerm);
-            const results = [];
-            
-            // Score and rank results
-            currentAirportFixes.forEach(fix => {
-                let score = 0;
-                let matchType = '';
-                
-                // Exact match (highest priority)
-                if (fix.name === searchTerm) {
-                    score = 100;
-                    matchType = 'Exact';
-                }
-                // Starts with
-                else if (fix.name.startsWith(searchTerm)) {
-                    score = 80;
-                    matchType = 'Starts with';
-                }
-                // Contains
-                else if (fix.name.includes(searchTerm)) {
-                    score = 60;
-                    matchType = 'Contains';
-                }
-                // Primary metaphone match
-                else if (fix.metaphone[0] === searchMeta[0]) {
-                    score = 50;
-                    matchType = 'Sounds like (primary)';
-                }
-                // Secondary metaphone match
-                else if (fix.metaphone[1] === searchMeta[1] && fix.metaphone[1] !== '') {
-                    score = 40;
-                    matchType = 'Sounds like (secondary)';
-                }
-                // Either metaphone matches either search metaphone
-                else if (fix.metaphone[0] === searchMeta[1] || fix.metaphone[1] === searchMeta[0]) {
-                    if (searchMeta[1] !== '' || fix.metaphone[1] !== '') {
-                        score = 30;
-                        matchType = 'Similar sound';
-                    }
-                }
-                
-                if (score > 0) {
-                    results.push({ ...fix, score, matchType });
-                }
-            });
-            
-            // Sort by score descending
-            results.sort((a, b) => b.score - a.score);
-            
-            // Display results
-            if (results.length === 0) {
-                resultsDiv.innerHTML = `
-                    <div class="no-results">
-                        No matches found for "${searchTerm}"<br>
-                        <small>Metaphone: ${searchMeta.join(', ')}</small>
+                resultsDiv.innerHTML += `
+                    <div class="result">
+                        <div>
+                            <strong>${fix}</strong>
+                            <span class="match-tag">${matchType}</span>
+                        </div>
+                        <div>
+                            Procedure: ${proc.name} (${proc.id})
+                        </div>
+                        <div style="margin-top:8px;">
+                            <strong>Full Procedure Route:</strong><br>
+                            ${allFixes}
+                        </div>
                     </div>
                 `;
-            } else {
-                let html = `<div class="stats">Found ${results.length} match(es)</div>`;
-                html += results.map(r => `
-                    <div class="fix-result">
-                        <div class="fix-name">
-                            ${r.name}
-                            <span class="phonetic-match">${r.matchType}</span>
-                        </div>
-                        <div class="procedure-info">
-                            Procedure: ${r.procedure} (${r.procedureId})<br>
-                            <small>Phonetic codes: ${r.metaphone.join(', ')}</small>
-                        </div>
-                    </div>
-                `).join('');
-                resultsDiv.innerHTML = html;
-            }
-        }
-
-        // Event listeners
-        document.getElementById('airport-select').addEventListener('change', function(e) {
-            if (e.target.value !== '') {
-                indexAirportFixes(parseInt(e.target.value));
-                document.getElementById('fix-search').focus();
-            } else {
-                currentAirportFixes = [];
-                document.getElementById('results').innerHTML = '<div class="no-results">Select an airport</div>';
             }
         });
+    });
 
-        document.getElementById('search-btn').addEventListener('click', searchFixes);
+    if (!resultsDiv.innerHTML) {
+        resultsDiv.innerHTML = `<div class="error">No matches found.</div>`;
+    }
+}
 
-        document.getElementById('fix-search').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                searchFixes();
-            }
-        });
+loadData();
+</script>
 
-        // Also search on input with debounce for real-time results
-        let debounceTimer;
-        document.getElementById('fix-search').addEventListener('input', function(e) {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
-                if (e.target.value.length >= 2) {
-                    searchFixes();
-                }
-            }, 300);
-        });
-
-        // Initialize
-        loadData();
-    </script>
 </body>
 </html>
